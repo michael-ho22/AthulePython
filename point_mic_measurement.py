@@ -33,14 +33,14 @@ import warnings
 
 # Constants and Microphone Parameters
 Card_ID = 'cDAQ1Mod8'
-Channel_ID = 'ai0'
+Channel_ID = 'ai1'
 f_samp = 50000  # Sample frequency in Hz
 L_samp = 10  # Sample duration in seconds
 P_ref = 20e-6  # Reference pressure in Pascals
 
 # Define microphone sensitivity and gain based on Mic_Name
 mic_params = {
-    'usr_A': {'mic_sens': 1.56e-3, 'gain': 30},
+    'usr_A': {'mic_sens': 1.56e-3, 'gain': 15},
     'usr_B': {'mic_sens': 1.575e-3, 'gain': 20},
     'GRAS': {'mic_sens': 12e-3, 'gain': 1}
 }

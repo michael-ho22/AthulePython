@@ -1,25 +1,3 @@
-''' -------------------------------------------------------------------------------
-Michael Ho
-Update Date: 3/20/24
-
-This Python control script interfaces with the Tyto 1780 hardware through
-the separate automatic control script "UDP_PYTHON_CONTROL_v1.js" in the 
-RCBenchmark software. This script controls the propeller thrust by adjusting 
-the ESC throttle and reads propeller performance data from the Tyto 1780
-hardware. This script also pulls SPL (LAF) readings from the B&K 2270
-sound analyzer, which is read into MATLAB by the NI 9223 DAQ card on the
-compact DAQ module. Additionally, the code interfaces with the Velmex
-Bi-SLide traverse to move the microphone along the propeller blade radius
-in 1/10" increments. The code creates a GUI allowing users to manually input
-the blade radius [in], hub to micrphone distance [in], thrust [lbf], and
-asks users to determine whether they want to increment the microphone 1/10"
-for the entirety of the blade radius or move the microphone to a specified
-r/R location. This script generates an output csv file at the end % of a 
-successful test containing mean and standard deviation values for various
-variables.
-
-------------------------------------------------------------------------------- '''
-
 import tkinter
 import tkinter.messagebox
 import customtkinter
@@ -39,6 +17,8 @@ from serial import Serial
 import nidaqmx
 import os
 import sys
+
+## THIS VERSION INCLUDES TAKING AN INITIAL BACKGROUND NOSE CHECK AND SUBTRACTING IT TOTAL SPL AT EACH POINT ##
 
 customtkinter.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
 customtkinter.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
@@ -92,8 +72,8 @@ def initialize_app():
     # Set up UDP communication with Tyto JS code
     u = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     u.bind((my_IP, tx_port))
-    recv_port = 55047 #this should remain the same across all users
-    u.sendto(b"hello there RC Benchmark", (my_IP, recv_port)) #should see appear on the right console of the RcBenchmark program
+    recv_port = 55047
+    u.sendto(b"hello there RC Benchmark", (my_IP, recv_port))
 
     # define number of moves
     # no_of_moves = np.ceil((R - X0) / X_pm)
@@ -161,7 +141,7 @@ class App(customtkinter.CTk):
                         font=customtkinter.CTkFont('CustomTkinter', 18, 'bold'))
         self.blade_radius = customtkinter.CTkEntry(self.blade_radius, placeholder_text='')
 
-        self.microphone_label = customtkinter.CTkLabel(self.microphone_dist, text='Enter Hub to Microphone Dist [in]: ',
+        self.microphone_label = customtkinter.CTkLabel(self.microphone_dist, text='Enter Hub to Microphone Dist [in]:\n(Please set to 3.750)',
                         font=customtkinter.CTkFont('CustomTkinter', 15, 'bold'))
         self.microphone_2_hub_entry = customtkinter.CTkEntry(self.microphone_dist, placeholder_text='')
 
@@ -212,7 +192,24 @@ class App(customtkinter.CTk):
         self.button.pack(padx=20, pady=20, expand='True')
         self.reset_button.pack(padx=20, pady=20, expand='True')
 
-    # add methods to app
+    def measure_background_noise(self):
+        # Take multiple readings to get a stable background noise measurement
+        num_samples = 10
+        noise_levels = []
+        with nidaqmx.Task() as task:
+            task.ai_channels.add_ai_voltage_chan(f'{DAQ_ID}/{Channel_ID}')
+            for _ in range(num_samples):
+                micDATA = task.read(number_of_samples_per_channel=1)
+                SPL = (200 / 4) * micDATA[0]  # Assuming this is the correct conversion for your setup
+                noise_levels.append(SPL)
+                time.sleep(0.1)  # Short pause between readings
+
+        # Calculate the mean SPL for background noise
+        background_noise = np.mean(noise_levels)
+        background_noise_stdev = np.std(noise_levels)
+        print(f"Initial Background Noise: {background_noise:.2f} dB ± {background_noise_stdev:.2f}")
+        return background_noise, background_noise_stdev
+
     def button_click(self):
 
         # Propeller radius "R", [in]
@@ -243,6 +240,9 @@ class App(customtkinter.CTk):
                 CTkMessagebox(title='Error', message='Thrust value must be between 0 and 15 lbs')
             else:
                 if self.radio_var.get() == 1:
+                # Calling the function to measure the background noise:
+                    background_noise, background_noise_stdev = self.measure_background_noise()
+
                 # Code for moving the microphone...
                     roR_input = customtkinter.CTkInputDialog(text="Enter specific r/R to move to: (max r/R is 1.2)",
                                                             title="Specified Location")
@@ -296,6 +296,7 @@ class App(customtkinter.CTk):
                             
                             # Initialize lists to store multiple readings
                             SPLs, thrusts, torques, voltages, currents, RPMs, mech_powers, elec_powers, motor_effs, prop_Mech_effs, prop_Elec_effs, times = ([] for i in range(12))
+                        
 
                             while t_meas <= L_sample:
                                 itr_meas += 15
@@ -358,8 +359,12 @@ class App(customtkinter.CTk):
                             TIME = t0_meas
                             NSAMP = itr_meas
 
+                            # Decibel Subtraction Equation to remove background noise
+                            SPLs_adjusted = [SPL_mean + np.log10(1 - 10 ** (-(SPL_mean - background_noise)/10)) for spl in SPLs]
+                            SPL_no_back = np.mean(SPLs_adjusted)
+                            SPL_no_back_stdev = np.std(SPLs_adjusted)
 
-                            results_table.append({'Time, [s]': TIME, 'r/R': roR, 'Mean SPL, [dB]': SPL_mean, 'SD SPL': SPL_stdev,
+                            results_table.append({'Time, [s]': TIME, 'r/R': roR, 'SPL no background: [dB]': SPL_no_back, 'SD SPL no background': SPL_no_back_stdev, 'Mean SPL, [dB]': SPL_mean, 'SD SPL': SPL_stdev,
                                                 'Mean Thrust, [lbf]': THRUST_mean, 'SD Thrust': THRUST_stdev, 'Mean Torque': TORQUE_mean,
                                                 'SD Torque': TORQUE_stdev, 'Mean Voltage': VOLTAGE_mean,
                                                 'SD Votlage': VOLTAGE_stdev, 'Mean RPM': RPM_mean, 'SD RPM': RPM_stdev, 'Mean Current': CURRENT_mean,
@@ -369,6 +374,7 @@ class App(customtkinter.CTk):
                             
                     # Shutdown Tasks
                     print("Traverse Complete... Shutting down...\n")
+                    print(f"The initial background noise was: {background_noise:.4f} dB")
                     # *** step down for higher RPM? ***
                     # kill the Tyto-JS (shuts off motor)
                     throttle_down = np.linspace(tyto_data['escA']['displayValue'], 1000,10)  # make sure the ESC A vs B side is correct here!!!
@@ -386,7 +392,7 @@ class App(customtkinter.CTk):
 
 
                     # send results to a file
-                    results_table.append({'Time, [s]': TIME, 'r/R': roR, 'Mean SPL, [dB]': SPL_mean, 'SD SPL': SPL_stdev,
+                    results_table.append({'Time, [s]': TIME, 'r/R': roR, 'SPL no background: [dB]': SPL_no_back, 'SD SPL no background': SPL_no_back_stdev, 'Mean SPL, [dB]': SPL_mean, 'SD SPL': SPL_stdev,
                                         'Mean Thrust, [lbf]': THRUST_mean, 'SD Thrust': THRUST_stdev, 'Mean Torque': TORQUE_mean,
                                         'SD Torque': TORQUE_stdev, 'Mean Voltage': VOLTAGE_mean, 'SD Votlage': VOLTAGE_stdev,
                                         'Mean RPM': RPM_mean, 'SD RPM': RPM_stdev, 'Mean Current': CURRENT_mean,
@@ -399,7 +405,11 @@ class App(customtkinter.CTk):
                     df.to_csv(file_label, index=False)
                     
                 elif self.radio_var.get() == 2:
+                # Calling the function to measure the background noise:
+                    background_noise, background_noise_stdev = self.measure_background_noise()
+
                 # Code for incrementing the microphone...
+                    CTkMessagebox(title='Notice', message='Mic will increment by 0.1 inches.')
                     move_distance = 0.1
 
                     # Propeller/Motor Startup
@@ -479,6 +489,7 @@ class App(customtkinter.CTk):
                             times.append(time_tyto)    
 
                             # pause? (might be limited enough already by tyto sample rate)
+                        
                         # compute values to store for this position -----------------------
                         SPL_mean = np.mean(SPLs)
                         print('SPL_mean: ', SPL_mean, 'r/R =', roR)
@@ -500,7 +511,12 @@ class App(customtkinter.CTk):
                         TIME = t0_meas
                         NSAMP = itr_meas
 
-                        results_table.append({'Time, [s]': TIME, 'r/R': roR, 'Mean SPL, [dB]': SPL_mean, 'SD SPL': SPL_stdev,
+                        # Decibel Subtraction Equation to remove background noise
+                        SPLs_adjusted = [SPL_mean + np.log10(1 - 10 ** (-(SPL_mean - background_noise)/10)) for spl in SPLs]
+                        SPL_no_back = np.mean(SPLs_adjusted)
+                        SPL_no_back_stdev = np.std(SPLs_adjusted)
+
+                        results_table.append({'Time, [s]': TIME, 'r/R': roR, ' Mean SPL no background: [dB]': SPL_no_back, 'SD SPL no background': SPL_no_back_stdev, 'Mean SPL, [dB]': SPL_mean, 'SD SPL': SPL_stdev,
                                                 'Mean Thrust, [lbf]': THRUST_mean, 'SD Thrust': THRUST_stdev, 'Mean Torque': TORQUE_mean,
                                                 'SD Torque': TORQUE_stdev, 'Mean Voltage': VOLTAGE_mean,
                                                 'SD Votlage': VOLTAGE_stdev, 'Mean RPM': RPM_mean, 'SD RPM': RPM_stdev, 'Mean Current': CURRENT_mean,
@@ -517,6 +533,7 @@ class App(customtkinter.CTk):
                     
                     # Shutdown Tasks
                     print("Traverse Complete... Shutting down...\n")
+                    print(f"The initial background noise was: {background_noise:.4f} dB")
                     # *** step down for higher RPM? ***
                     # kill the Tyto-JS (shuts off motor)
                     throttle_down = np.linspace(tyto_data['escA']['displayValue'], 1000,10)  # make sure the ESC A vs B side is correct here!!!
@@ -532,9 +549,8 @@ class App(customtkinter.CTk):
 
                     u.close()
 
-
                     # send results to a file
-                    results_table.append({'Time, [s]': TIME, 'r/R': roR, 'Mean SPL, [dB]': SPL_mean, 'SD SPL': SPL_stdev,
+                    results_table.append({'Time, [s]': TIME, 'r/R': roR, 'Mean SPL no background: [dB]': SPL_no_back, 'SD SPL no background': SPL_no_back_stdev, 'Mean SPL, [dB]': SPL_mean, 'SD SPL': SPL_stdev,
                                         'Mean Thrust, [lbf]': THRUST_mean, 'SD Thrust': THRUST_stdev, 'Mean Torque': TORQUE_mean,
                                         'SD Torque': TORQUE_stdev, 'Mean Voltage': VOLTAGE_mean, 'SD Votlage': VOLTAGE_stdev,
                                         'Mean RPM': RPM_mean, 'SD RPM': RPM_stdev, 'Mean Current': CURRENT_mean,
@@ -545,7 +561,6 @@ class App(customtkinter.CTk):
                     file_label = main_path + ' SPL_Traverse ' + datetime.now().strftime("%B %d %Y %H_%M_%S") + '.csv'
                     df = pd.DataFrame(results_table)
                     df.to_csv(file_label, index=False)
-            
 
     def button_reset(self):
         global app, R, X_pm, X0, L_sample_default, mic_name, DAQ_ID, Channel_ID, f_sample, A
