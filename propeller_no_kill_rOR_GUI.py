@@ -17,6 +17,7 @@ from serial import Serial
 import nidaqmx
 import os
 import sys
+import csv
 
 ## THIS VERSION INCLUDES TAKING AN INITIAL BACKGROUND NOSE CHECK AND SUBTRACTING IT TOTAL SPL AT EACH POINT ##
 
@@ -208,6 +209,7 @@ class App(customtkinter.CTk):
         background_noise = np.mean(noise_levels)
         background_noise_stdev = np.std(noise_levels)
         print(f"Initial Background Noise: {background_noise:.2f} dB ± {background_noise_stdev:.2f}")
+        results_table.append({'Initial Background Noise [dB]': background_noise})
         return background_noise, background_noise_stdev
 
     def button_click(self):
@@ -389,17 +391,7 @@ class App(customtkinter.CTk):
                     vxm.write(b'C,Q\n')
 
                     u.close()
-
-
-                    # send results to a file
-                    results_table.append({'Time, [s]': TIME, 'r/R': roR, 'SPL no background: [dB]': SPL_no_back, 'SD SPL no background': SPL_no_back_stdev, 'Mean SPL, [dB]': SPL_mean, 'SD SPL': SPL_stdev,
-                                        'Mean Thrust, [lbf]': THRUST_mean, 'SD Thrust': THRUST_stdev, 'Mean Torque': TORQUE_mean,
-                                        'SD Torque': TORQUE_stdev, 'Mean Voltage': VOLTAGE_mean, 'SD Votlage': VOLTAGE_stdev,
-                                        'Mean RPM': RPM_mean, 'SD RPM': RPM_stdev, 'Mean Current': CURRENT_mean,
-                                        'SD Current': CURRENT_stdev, 'Mech. Power, [W]': POWER_mean, 'SD Power': POWER_stdev, 
-                                        'Elec. Power, [W]': ePOWER_mean, 'SD Elec Power': ePOWER_stdev,'Motor Eff.': motor_eff, 
-                                        'Propeller Mech. Eff.': prop_Mech_eff, 'Propeller Elec. Eff.': prop_Elec_eff, 
-                                        'n Samples': NSAMP})
+                    
                     file_label = main_path + ' SPL_Traverse ' + datetime.now().strftime("%B %d %Y %H_%M_%S") + '.csv'
                     df = pd.DataFrame(results_table)
                     df.to_csv(file_label, index=False)
@@ -550,20 +542,12 @@ class App(customtkinter.CTk):
                     u.close()
 
                     # send results to a file
-                    results_table.append({'Time, [s]': TIME, 'r/R': roR, 'Mean SPL no background: [dB]': SPL_no_back, 'SD SPL no background': SPL_no_back_stdev, 'Mean SPL, [dB]': SPL_mean, 'SD SPL': SPL_stdev,
-                                        'Mean Thrust, [lbf]': THRUST_mean, 'SD Thrust': THRUST_stdev, 'Mean Torque': TORQUE_mean,
-                                        'SD Torque': TORQUE_stdev, 'Mean Voltage': VOLTAGE_mean, 'SD Votlage': VOLTAGE_stdev,
-                                        'Mean RPM': RPM_mean, 'SD RPM': RPM_stdev, 'Mean Current': CURRENT_mean,
-                                        'SD Current': CURRENT_stdev, 'Mech. Power, [W]': POWER_mean, 'SD Power': POWER_stdev, 
-                                        'Elec. Power, [W]': ePOWER_mean, 'SD Elec Power': ePOWER_stdev,'Motor Eff.': motor_eff, 
-                                        'Propeller Mech. Eff.': prop_Mech_eff, 'Propeller Elec. Eff.': prop_Elec_eff, 
-                                        'n Samples': NSAMP})
                     file_label = main_path + ' SPL_Traverse ' + datetime.now().strftime("%B %d %Y %H_%M_%S") + '.csv'
                     df = pd.DataFrame(results_table)
                     df.to_csv(file_label, index=False)
 
     def button_reset(self):
-        global app, R, X_pm, X0, L_sample_default, mic_name, DAQ_ID, Channel_ID, f_sample, A
+        global file_label, app, R, X_pm, X0, L_sample_default, mic_name, DAQ_ID, Channel_ID, f_sample, A
         global hostname, my_IP, tx_port, main_path, kill, results_table, u, vxm, recv_port
         
         # Closes the existing socket before destroying the app
@@ -584,5 +568,3 @@ class App(customtkinter.CTk):
 initialize_app()
 app = App()
 app.mainloop()
-
-
