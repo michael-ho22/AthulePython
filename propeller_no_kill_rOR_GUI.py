@@ -217,7 +217,7 @@ class App(customtkinter.CTk):
         # Propeller radius "R", [in]
         if self.blade_radius.get() == '':
             CTkMessagebox(title='Error', message='Please enter radius [in]')
-        elif self.blade_radius.get().isnumeric == False:
+        elif self.blade_radius.get().isnumeric() == False:
             CTkMessagebox(title='Error', message='Please enter a numerical radius value [in]')
         else:
             R = float(self.blade_radius.get())
@@ -225,7 +225,7 @@ class App(customtkinter.CTk):
         # Traverse start location "X0", [in]
         if self.microphone_2_hub_entry.get() == '':
             CTkMessagebox(title='Error', message='Please enter distance [in]')
-        elif self.microphone_2_hub_entry.get().isnumeric == False:
+        elif self.microphone_2_hub_entry.get().isnumeric() == False:
             CTkMessagebox(title='Error', message='Please enter a numerical radius value [in]')
         else:
             X0 = float(self.microphone_2_hub_entry.get())
