@@ -151,7 +151,7 @@ class App(customtkinter.CTk):
 
             if thrust < 0 or thrust > 15:
                 CTkMessagebox(title='Error', message='Thrust value must be between 0 and 15 lbs')
-
+        rOR = float(self.rOR.get())
         if self.rOR.get() == '':
             CTkMessagebox(title='Error', message='Please enter rOR value (between 0 and 1.2)')
         elif self.rOR.get().isnumeric() == False:
