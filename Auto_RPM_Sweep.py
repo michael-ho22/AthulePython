@@ -7,7 +7,7 @@ from tkinter import Tk, Button
 import customtkinter as ctk
 from customtkinter import *
 from datetime import datetime
-from control2RPMv4 import control2rpmv4
+from control2RPM import control2rpm
 
 L_samp = 5
 SweepRPMs = np.linspace(1500, 3000, 25)
@@ -48,12 +48,12 @@ time.sleep(3)  # Wait for the motor to spin up
 # app.mainloop()
 
 target_RPM = 2000
-control2rpmv4(target_RPM, 20, 200, u, my_IP, recv_port, b)
+control2rpm(target_RPM, 20, 200, u, my_IP, recv_port, b)
 
 results = []
 
 for rpm in SweepRPMs:
-    control2rpmv4(rpm, 10, 200, u, my_IP, recv_port, b)
+    control2rpm(rpm, 10, 200, u, my_IP, recv_port, b)
     # Send control command (This part should ideally be in your control function, but we're keeping it inline as per request)
     control_command = json.dumps({"command": "set_rpm", "value": rpm})
     u.sendto(control_command.encode(), (my_IP, recv_port))
@@ -65,8 +65,8 @@ for rpm in SweepRPMs:
     decoded_data = message.decode('latin1')
 
     try:
-        tytoDATA = json.loads(decoded_data)
-        t0_meas = tytoDATA["time"]["displayValue"]  # Initial measurement time
+        tyto_DATA = json.loads(decoded_data)
+        t0_meas = tyto_DATA["time"]["displayValue"]  # Initial measurement time
     except json.JSONDecodeError:
         print("Received non-JSON data:", decoded_data)
 
@@ -88,17 +88,17 @@ for rpm in SweepRPMs:
             meas_collection.append(tyto_data)
             # Assuming 'time' is a direct value representing seconds for simplicity
             current_time = tyto_data["time"]["displayValue"]
-            thrust = tytoDATA['thrust']['displayValue']
-            torque = tytoDATA['torque']['displayValue']
-            voltage = tytoDATA['voltage']['displayValue']
-            current = tytoDATA['current']['displayValue']
-            RPM = tytoDATA['motorOpticalSpeed']['displayValue']
-            mech_power = tytoDATA['mechanicalPower']['displayValue']
-            elec_power = tytoDATA['electricalPower']['displayValue']
-            motor_eff = tytoDATA['motorEfficiency']['displayValue']
-            prop_Mech_eff = tytoDATA['propMechEfficiency']['displayValue']
-            prop_Elec_eff = tytoDATA['propElecEfficiency']['displayValue']
-            time_tyto = tytoDATA['time']['displayValue']
+            thrust = tyto_DATA['thrust']['displayValue']
+            torque = tyto_DATA['torque']['displayValue']
+            voltage = tyto_DATA['voltage']['displayValue']
+            current = tyto_DATA['current']['displayValue']
+            RPM = tyto_DATA['motorOpticalSpeed']['displayValue']
+            mech_power = tyto_DATA['mechanicalPower']['displayValue']
+            elec_power = tyto_DATA['electricalPower']['displayValue']
+            motor_eff = tyto_DATA['motorEfficiency']['displayValue']
+            prop_Mech_eff = tyto_DATA['propMechEfficiency']['displayValue']
+            prop_Elec_eff = tyto_DATA['propElecEfficiency']['displayValue']
+            time_tyto = tyto_DATA['time']['displayValue']
             t_meas = current_time - t0_meas
             itr_meas += 1
 
