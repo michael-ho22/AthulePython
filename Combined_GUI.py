@@ -518,7 +518,7 @@ class MyTabView(customtkinter.CTkTabview):
                             # Calling the function to measure the background noise:
                             background_noise, background_noise_stdev = self.measure_background_noise()
                             
-                            CTkMessagebox(title='Notice', message='Mic will increment by 0.1 inches.')
+                            messagebox.showinfo(title='Notice', message='Mic will increment by 0.1 inches.')
                             move_distance = 0.1
 
                             # Propeller/Motor Startup
@@ -850,133 +850,133 @@ class MyTabView(customtkinter.CTkTabview):
             target_RPM = float(self.RPM_num.get())
 
             if target_RPM <= 0 or target_RPM >= 4000:
-                CTkMessagebox(title='Error', message='Thrust value must be between 1 and 4000 lbs')
+                CTkMessagebox(title='Error', message='RPM value must be between 1 and 4000 RPM')
+            else:
+                # Propeller/Motor Startup
+                throttle_start = 1000
+                u.sendto(str(throttle_start).encode(), (my_IP, recv_port))
+                time.sleep(5)  # wait to spin up
 
-        # Propeller/Motor Startup
-        throttle_start = 1000
-        u.sendto(str(throttle_start).encode(), (my_IP, recv_port))
-        time.sleep(5)  # wait to spin up
-
-        throttle_start = 1160  # Value to start spinning the blades
-        u.sendto(str(throttle_start).encode(), (my_IP, recv_port))
-        time.sleep(3)  # Wait for the motor to spin up
-
-
-        control2rpm(target_RPM, 20, 200, u, my_IP, recv_port, b)
+                throttle_start = 1160  # Value to start spinning the blades
+                u.sendto(str(throttle_start).encode(), (my_IP, recv_port))
+                time.sleep(3)  # Wait for the motor to spin up
 
 
-        for rpm in SweepRPMs:
-            control2rpm(rpm, 10, 200, u, my_IP, recv_port, b)
-            # Send control command (This part should ideally be in your control function, but we're keeping it inline as per request)
-            control_command = json.dumps({"command": "set_rpm", "value": rpm})
-            u.sendto(control_command.encode(), (my_IP, recv_port))
+                control2rpm(target_RPM, 20, 200, u, my_IP, recv_port, b)
 
-            # Requesting data
-            read_command = "read"
-            u.sendto(read_command.encode(), (my_IP, recv_port))
-            message, _ = u.recvfrom(4096)  # sAdjust buffer size as needed
-            decoded_data = message.decode('latin1')
 
-            try:
-                tytoDATA = json.loads(decoded_data)
-                t0_meas = tytoDATA["time"]["displayValue"]  # Initial measurement time
-            except json.JSONDecodeError:
-                print("Received non-JSON data:", decoded_data)
+                for rpm in SweepRPMs:
+                    control2rpm(rpm, 10, 200, u, my_IP, recv_port, b)
+                    # Send control command (This part should ideally be in your control function, but we're keeping it inline as per request)
+                    control_command = json.dumps({"command": "set_rpm", "value": rpm})
+                    u.sendto(control_command.encode(), (my_IP, recv_port))
 
-            # Initialize measurement variables
-            t_meas = 0
-            itr_meas = 0
-            meas_collection = []  # Collect data for this RPM
+                    # Requesting data
+                    read_command = "read"
+                    u.sendto(read_command.encode(), (my_IP, recv_port))
+                    message, _ = u.recvfrom(4096)  # sAdjust buffer size as needed
+                    decoded_data = message.decode('latin1')
 
-            thrusts, torques, voltages, currents, RPMs, mech_powers, elec_powers, motor_effs, prop_Mech_effs, prop_Elec_effs, times = ([] for i in range(11))
+                    try:
+                        tytoDATA = json.loads(decoded_data)
+                        t0_meas = tytoDATA["time"]["displayValue"]  # Initial measurement time
+                    except json.JSONDecodeError:
+                        print("Received non-JSON data:", decoded_data)
 
-            while t_meas <= L_samp_tab3:
-                # Assuming you have a similar way to repeatedly collect data
-                u.sendto(read_command.encode(), (my_IP, recv_port))
-                message, _ = u.recvfrom(4096)
-                current_data = message.decode('latin1')
-                try:
-                    tyto_data = json.loads(current_data)
-                    # Append the current data to the meas_collection list
-                    meas_collection.append(tyto_data)
-                except json.JSONDecodeError:
-                    print("Received non-JSON data:", tyto_data)
-                # Exit the function or handle the error as appropriate
-                # Append the current data to the meas_collection list
-                # Assuming 'time' is a direct value representing seconds for simplicity
-                
-                current_time = tyto_data["time"]["displayValue"]
-                thrust = tyto_data['thrust']['displayValue']
-                torque = tyto_data['torque']['displayValue']
-                voltage = tyto_data['voltage']['displayValue']
-                current = tyto_data['current']['displayValue']
-                RPM = tyto_data['motorOpticalSpeed']['displayValue']
-                mech_power = tyto_data['mechanicalPower']['displayValue']
-                elec_power = tyto_data['electricalPower']['displayValue']
-                motor_eff = tyto_data['motorEfficiency']['displayValue']
-                prop_Mech_eff = tyto_data['propMechEfficiency']['displayValue']
-                prop_Elec_eff = tyto_data['propElecEfficiency']['displayValue']
-                time_tyto = tyto_data['time']['displayValue']
-                t_meas = current_time - t0_meas
-                itr_meas += 1
+                    # Initialize measurement variables
+                    t_meas = 0
+                    itr_meas = 0
+                    meas_collection = []  # Collect data for this RPM
 
-                # Append new readings to their respective lists
-                thrusts.append(thrust)
-                torques.append(torque)
-                voltages.append(voltage)
-                currents.append(current)
-                RPMs.append(RPM)
-                mech_powers.append(mech_power)
-                elec_powers.append(elec_power)
-                motor_effs.append(motor_eff)
-                prop_Mech_effs.append(prop_Mech_eff)
-                prop_Elec_effs.append(prop_Elec_eff)
-                times.append(time_tyto)
+                    thrusts, torques, voltages, currents, RPMs, mech_powers, elec_powers, motor_effs, prop_Mech_effs, prop_Elec_effs, times = ([] for i in range(11))
 
-                
-            
-            # compute values to store for this position -----------------------
-            THRUST_mean = np.mean(thrusts)
-            THRUST_stdev = np.std(thrusts)
-            TORQUE_mean = np.mean(torques)
-            TORQUE_stdev = np.std(torques)
-            VOLTAGE_mean = np.mean(voltages)
-            VOLTAGE_stdev = np.std(voltages)
-            CURRENT_mean = np.mean(currents)
-            CURRENT_stdev = np.std(currents)
-            RPM_mean = np.mean(RPMs)
-            RPM_stdev = np.std(RPMs)
-            POWER_mean = np.mean(mech_powers)
-            POWER_stdev = np.std(mech_powers)
-            ePOWER_mean = np.mean(elec_powers)
-            ePOWER_stdev = np.std(elec_powers)
-            TIME = t0_meas
-            NSAMP = itr_meas
+                    while t_meas <= L_samp_tab3:
+                        # Assuming you have a similar way to repeatedly collect data
+                        u.sendto(read_command.encode(), (my_IP, recv_port))
+                        message, _ = u.recvfrom(4096)
+                        current_data = message.decode('latin1')
+                        try:
+                            tyto_data = json.loads(current_data)
+                            # Append the current data to the meas_collection list
+                            meas_collection.append(tyto_data)
+                        except json.JSONDecodeError:
+                            print("Received non-JSON data:", tyto_data)
+                        # Exit the function or handle the error as appropriate
+                        # Append the current data to the meas_collection list
+                        # Assuming 'time' is a direct value representing seconds for simplicity
+                        
+                        current_time = tyto_data["time"]["displayValue"]
+                        thrust = tyto_data['thrust']['displayValue']
+                        torque = tyto_data['torque']['displayValue']
+                        voltage = tyto_data['voltage']['displayValue']
+                        current = tyto_data['current']['displayValue']
+                        RPM = tyto_data['motorOpticalSpeed']['displayValue']
+                        mech_power = tyto_data['mechanicalPower']['displayValue']
+                        elec_power = tyto_data['electricalPower']['displayValue']
+                        motor_eff = tyto_data['motorEfficiency']['displayValue']
+                        prop_Mech_eff = tyto_data['propMechEfficiency']['displayValue']
+                        prop_Elec_eff = tyto_data['propElecEfficiency']['displayValue']
+                        time_tyto = tyto_data['time']['displayValue']
+                        t_meas = current_time - t0_meas
+                        itr_meas += 1
 
-            # After collecting data for the current RPM, process and store it in DATA
-            # The processing here depends on how you want to aggregate or use the collected data
-            # For example, appending all meas_collection for this RPM
-            results.append({'Time, [s]': TIME, 'Mean Thrust, [lbf]': THRUST_mean, 'SD Thrust': THRUST_stdev, 'Mean Torque': TORQUE_mean,
-                            'SD Torque': TORQUE_stdev, 'Mean Voltage': VOLTAGE_mean, 'SD Votlage': VOLTAGE_stdev, 'Mean RPM': RPM_mean, 
-                            'SD RPM': RPM_stdev, 'Mean Current': CURRENT_mean, 'SD Current': CURRENT_stdev, 'Mech. Power, [W]': POWER_mean, 
-                            'SD Power': POWER_stdev, 'Elec. Power, [W]': ePOWER_mean,'SD Elec Power': ePOWER_stdev, 'Motor Eff.': motor_eff, 
-                            'Propeller Mech. Eff.': prop_Mech_eff, 'Propeller Elec. Eff.': prop_Elec_eff, 'n Samples': NSAMP})
+                        # Append new readings to their respective lists
+                        thrusts.append(thrust)
+                        torques.append(torque)
+                        voltages.append(voltage)
+                        currents.append(current)
+                        RPMs.append(RPM)
+                        mech_powers.append(mech_power)
+                        elec_powers.append(elec_power)
+                        motor_effs.append(motor_eff)
+                        prop_Mech_effs.append(prop_Mech_eff)
+                        prop_Elec_effs.append(prop_Elec_eff)
+                        times.append(time_tyto)
 
-        # Saving results to a CSV file
-        df = pd.DataFrame(results)
-        # df.columns = ['Time', 'Mean Thrust', 'SD Thrust', 'Mean Torque', 'SD Torque', 'Mean RPM', 'SD RPM', 'Mech. Power', 'SD Mech. Power', 'Current', 'SD Current', 'Voltage', 'SD Voltage', 'Elec. Power', 'SD Elec. Power', 'Motor Efficiency', 'SD Motor Eff', 'N Samples']
-        file_label = f"{main_path_tab3}/RPM_Sweep_{datetime.now().strftime('%B %d %Y %H_%M_%S')}.csv"
-        df.to_csv(file_label, index=False)
-            
-        # *** step down for higher RPM? ***
-        # kill the Tyto-JS (shuts off motor)
-        print("Traverse Complete... Shutting down...\n")
-        throttle_down = np.linspace(tyto_data['escA']['displayValue'], 1000,10)  # make sure the ESC A vs B side is correct here!!!
-        for throttle in throttle_down:
-            u.sendto(str(throttle).encode(), (my_IP, recv_port))
-            time.sleep(0.5)
-        u.sendto(b"kill", (my_IP, recv_port))
-        u.close()
+                        
+                    
+                    # compute values to store for this position -----------------------
+                    THRUST_mean = np.mean(thrusts)
+                    THRUST_stdev = np.std(thrusts)
+                    TORQUE_mean = np.mean(torques)
+                    TORQUE_stdev = np.std(torques)
+                    VOLTAGE_mean = np.mean(voltages)
+                    VOLTAGE_stdev = np.std(voltages)
+                    CURRENT_mean = np.mean(currents)
+                    CURRENT_stdev = np.std(currents)
+                    RPM_mean = np.mean(RPMs)
+                    RPM_stdev = np.std(RPMs)
+                    POWER_mean = np.mean(mech_powers)
+                    POWER_stdev = np.std(mech_powers)
+                    ePOWER_mean = np.mean(elec_powers)
+                    ePOWER_stdev = np.std(elec_powers)
+                    TIME = t0_meas
+                    NSAMP = itr_meas
+
+                    # After collecting data for the current RPM, process and store it in DATA
+                    # The processing here depends on how you want to aggregate or use the collected data
+                    # For example, appending all meas_collection for this RPM
+                    results.append({'Time, [s]': TIME, 'Mean Thrust, [lbf]': THRUST_mean, 'SD Thrust': THRUST_stdev, 'Mean Torque': TORQUE_mean,
+                                    'SD Torque': TORQUE_stdev, 'Mean Voltage': VOLTAGE_mean, 'SD Votlage': VOLTAGE_stdev, 'Mean RPM': RPM_mean, 
+                                    'SD RPM': RPM_stdev, 'Mean Current': CURRENT_mean, 'SD Current': CURRENT_stdev, 'Mech. Power, [W]': POWER_mean, 
+                                    'SD Power': POWER_stdev, 'Elec. Power, [W]': ePOWER_mean,'SD Elec Power': ePOWER_stdev, 'Motor Eff.': motor_eff, 
+                                    'Propeller Mech. Eff.': prop_Mech_eff, 'Propeller Elec. Eff.': prop_Elec_eff, 'n Samples': NSAMP})
+
+                # Saving results to a CSV file
+                df = pd.DataFrame(results)
+                # df.columns = ['Time', 'Mean Thrust', 'SD Thrust', 'Mean Torque', 'SD Torque', 'Mean RPM', 'SD RPM', 'Mech. Power', 'SD Mech. Power', 'Current', 'SD Current', 'Voltage', 'SD Voltage', 'Elec. Power', 'SD Elec. Power', 'Motor Efficiency', 'SD Motor Eff', 'N Samples']
+                file_label = f"{main_path_tab3}/RPM_Sweep_{datetime.now().strftime('%B %d %Y %H_%M_%S')}.csv"
+                df.to_csv(file_label, index=False)
+                    
+                # *** step down for higher RPM? ***
+                # kill the Tyto-JS (shuts off motor)
+                print("Traverse Complete... Shutting down...\n")
+                throttle_down = np.linspace(tyto_data['escA']['displayValue'], 1000,10)  # make sure the ESC A vs B side is correct here!!!
+                for throttle in throttle_down:
+                    u.sendto(str(throttle).encode(), (my_IP, recv_port))
+                    time.sleep(0.5)
+                u.sendto(b"kill", (my_IP, recv_port))
+                u.close()
 
     def button_reset(self):
         global file_label, app, R, X_pm, X0, L_sample_default, mic_name, DAQ_ID, Channel_ID, f_sample, A
