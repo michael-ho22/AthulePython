@@ -3,7 +3,7 @@ import json
 import time
 import math
 
-def control2rpmv4(target_RPM, tol, itr_max, u, my_IP, recv_port, b):
+def control2rpm(target_RPM, tol, itr_max, u, my_IP, recv_port, b):
     """
     A simple PID controller to reach a target RPM.
 

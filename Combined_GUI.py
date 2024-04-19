@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from pandas import ExcelWriter
 from datetime import datetime
 from control2Thrust import control2Thrust
-from control2RPMv4 import control2rpmv4
+from control2RPM import control2rpm
 import tkinter as tk
 from tkinter import messagebox, Tk, Button
 import serial
@@ -862,11 +862,11 @@ class MyTabView(customtkinter.CTkTabview):
         time.sleep(3)  # Wait for the motor to spin up
 
 
-        control2rpmv4(target_RPM, 20, 200, u, my_IP, recv_port, b)
+        control2rpm(target_RPM, 20, 200, u, my_IP, recv_port, b)
 
 
         for rpm in SweepRPMs:
-            control2rpmv4(rpm, 10, 200, u, my_IP, recv_port, b)
+            control2rpm(rpm, 10, 200, u, my_IP, recv_port, b)
             # Send control command (This part should ideally be in your control function, but we're keeping it inline as per request)
             control_command = json.dumps({"command": "set_rpm", "value": rpm})
             u.sendto(control_command.encode(), (my_IP, recv_port))
