@@ -239,6 +239,10 @@ class MyTabView(customtkinter.CTkTabview):
                                                     font=customtkinter.CTkFont('CustomTkinter', 14, 'bold'), fg_color='#7EA8B5',
                                                     corner_radius = 20, hover_color='#F83613',command=self.button_reset)
 
+        reset_vxm = customtkinter.CTkButton(tab_1, text='RESET MIC LOCATION', anchor='center',
+                                                    font=customtkinter.CTkFont('CustomTkinter', 14, 'bold'), fg_color='#7EA8B5',
+                                                    corner_radius = 20, hover_color='#F83613',command=self.button_reset_vxm)
+
         button = customtkinter.CTkButton(tab_1, text='RUN', anchor='center', 
                                             font=customtkinter.CTkFont('CustomTkinter', 14, 'bold'), fg_color='#7EA8B5',
                                             corner_radius = 20, hover_color='#7DC445', command=self.button_click)
@@ -259,6 +263,7 @@ class MyTabView(customtkinter.CTkTabview):
         radiobutton2.pack(side='right', padx=20)
 
         button.pack(padx=20, pady=10, expand='True')
+        reset_vxm.pack(padx=20, pady=10, expand='True')
         reset_button.pack(padx=20, pady=10, expand='True')
 
         tooltip1 = Tooltip(self.blade_radius_entry, "This value should be the distance from the center of the blade hub\nto the tip of the blade. Measure before testing.")
@@ -267,6 +272,7 @@ class MyTabView(customtkinter.CTkTabview):
         tooltip4 = Tooltip(radiobutton1, "If the user would like to move the mic to a specified r/R value location on the vxm traverse, select this.\nThis value is often times determined after pressing the no button first.")
         tooltip5 = Tooltip(radiobutton2, "This would increment the microphone along the traverse over certain number of inches inputted by the user.\nEach incrementation would collect data to show users the average LAeq at each increment point.")
         tooltip6 = Tooltip(button, "This button would run the program.")
+        tooltip16 = Tooltip(reset_vxm, "This button resets the vxm position to the starting location\nif it were to get stuck at any point on the traverse.")
         tooltip7 = Tooltip(reset_button, "This button would reset the entire GUI and clear any tables/arrays.\nClick after each completed test run.")
         
         # ---------------------------------------------------------------------------
@@ -315,6 +321,10 @@ class MyTabView(customtkinter.CTkTabview):
         reset_button_tab2 = customtkinter.CTkButton(tab_2, text='RESET', anchor='center',
                                                     font=customtkinter.CTkFont('CustomTkinter', 14, 'bold'), fg_color='#7EA8B5',
                                                     corner_radius = 20, hover_color='#F83613', command=self.button_reset)
+        
+        reset_vxm_tab2 = customtkinter.CTkButton(tab_2, text='RESET MIC LOCATION', anchor='center',
+                                                    font=customtkinter.CTkFont('CustomTkinter', 14, 'bold'), fg_color='#7EA8B5',
+                                                    corner_radius = 20, hover_color='#F83613',command=self.button_reset_vxm)
 
         button_tab2 = customtkinter.CTkButton(tab_2, text='RUN', anchor='center', 
                                             font=customtkinter.CTkFont('CustomTkinter', 14, 'bold'), fg_color='#7EA8B5',
@@ -332,12 +342,14 @@ class MyTabView(customtkinter.CTkTabview):
         self.rOR.pack(padx=20, pady=10)
 
         button_tab2.pack(padx=20, pady=10)
+        reset_vxm_tab2.pack(padx=20, pady=10)
         reset_button_tab2.pack(padx=20, pady=10)
 
         tooltip8 = Tooltip(self.thrust_num, "This value is the amonut of thrust you'd like to use to spin the blade. Default thrust value is 5 lbs.")
         tooltip9 = Tooltip(self.radius_num, "This value should be the distance from the center of the blade hub\nto the tip of the blade. Measure before testing.")
         tooltip10 = Tooltip(self.rOR, "If the user would like to move the mic to a specified r/R value location on the vxm traverse.\nThis value is often times determined after running the PROPELLER TRAVERSE program.")
         tooltip11 = Tooltip(button_tab2, "This button would run the program.")
+        tooltip17 = Tooltip(reset_vxm_tab2, "This button resets the vxm position to the starting location\nif it were to get stuck at any point on the traverse.")
         tooltip12 = Tooltip(reset_button_tab2, "This button would reset the entire GUI and clear any tables/arrays.\nClick after each completed test run.")
 
         # ---------------------------------------------------------------------------
@@ -381,6 +393,10 @@ class MyTabView(customtkinter.CTkTabview):
         reset_button_tab3 = customtkinter.CTkButton(tab_3, text='RESET', anchor='center',
                                                     font=customtkinter.CTkFont('CustomTkinter', 14, 'bold'), fg_color='#7EA8B5',
                                                     corner_radius = 20, hover_color='#F83613', command=self.button_reset)
+        
+        reset_vxm_tab3 = customtkinter.CTkButton(tab_3, text='RESET MIC LOCATION', anchor='center',
+                                                    font=customtkinter.CTkFont('CustomTkinter', 14, 'bold'), fg_color='#7EA8B5',
+                                                    corner_radius = 20, hover_color='#F83613',command=self.button_reset_vxm)
 
 
         note_label3.pack(padx=10, pady=2)
@@ -390,11 +406,12 @@ class MyTabView(customtkinter.CTkTabview):
         self.RPM_num.pack(padx=20, pady=10)
 
         button_tab3.pack(padx=20, pady=5)
-        # self.kill_button.pack(padx=20, pady=5, expand='True')
+        reset_vxm_tab3.pack(padx=20, pady=5)
         reset_button_tab3.pack(padx=20, pady=5)
 
         tooltip13 = Tooltip(self.RPM_num, "Set the target max RPM for program to slowly collect data from motor startup to every RPM leading up to the target.")
         tooltip14 = Tooltip(button_tab3, "This button would run the program.")
+        tooltip18 = Tooltip(reset_vxm_tab3, "This button resets the vxm position to the starting location\nif it were to get stuck at any point on the traverse.")
         tooltip15 = Tooltip(reset_button_tab3, "This button would reset the entire GUI and clear any tables/arrays.\nClick after each completed test run.")
 
         toplevel_window = None
@@ -418,6 +435,12 @@ class MyTabView(customtkinter.CTkTabview):
         print(f"Initial Background Noise: {background_noise:.2f} dB ± {background_noise_stdev:.2f}")
         results_table.append({'Initial Background Noise [dB]': background_noise})
         return background_noise, background_noise_stdev
+    
+    def button_reset_vxm(self):
+        # moves the traverse back to the starting location (limit-zero position)
+        vxm.write(b'C,I1M-0,R\n')
+        # clear memory and terminate connection
+        vxm.write(b'C,Q\n')
 
     def button_click(self):
         # Propeller radius "R", [in]
