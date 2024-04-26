@@ -90,6 +90,7 @@ mic_params = {
 Mic_Name = 'usr_A'  # or 'usr_B', 'GRAS', as needed
 mic_sens = mic_params[Mic_Name]['mic_sens']
 gain = mic_params[Mic_Name]['gain']
+output_dir = 'C:\\Users\\mykoh\\OneDrive\\Documents\\BIP\\Results\\FFT'
 
 # ------------------------------------------------------------------------------
 
@@ -343,6 +344,10 @@ class MyTabView(customtkinter.CTkTabview):
 
         # Widgets for Auto RPM Sweep
         note3 = customtkinter.CTkFrame(tab_3)
+        m_rpm = customtkinter.CTkFrame(tab_3,
+                                        corner_radius=20,
+                                        border_width=2,
+                                        border_color='#7EA8B5')
         t_rpm = customtkinter.CTkFrame(tab_3,
                                         corner_radius=20,
                                         border_width=2,
@@ -355,13 +360,17 @@ class MyTabView(customtkinter.CTkTabview):
                                                   fg_color='transparent')
         
         note3.pack(fill='y', padx=5, pady=5)
+        m_rpm.pack(fill='y', padx=20, pady=20)
         t_rpm.pack(fill='y', padx=20, pady=20)
         button_frame.pack(side='bottom', padx=20, pady=20)
 
         note_label3 = customtkinter.CTkLabel(note3, text='!! Change Output Socket Signal to Input-Z Weighted and 15.0 dB gain in setup tab on 2270 device !!',
                                     font=customtkinter.CTkFont('CustomTkinter', 14, 'bold'), text_color='#FF2727')
 
-        RPM_label = customtkinter.CTkLabel(t_rpm, text='Enter Target RPM:',
+        min_RPM_label = customtkinter.CTkLabel(m_rpm, text='Enter Minimum Target RPM:',
+                                font=customtkinter.CTkFont('CustomTkinter', 18, 'bold'))
+        self.min_RPM_num = customtkinter.CTkEntry(m_rpm, placeholder_text='')
+        RPM_label = customtkinter.CTkLabel(t_rpm, text='Enter Maximum Target RPM:',
                                 font=customtkinter.CTkFont('CustomTkinter', 18, 'bold'))
         self.RPM_num = customtkinter.CTkEntry(t_rpm, placeholder_text='')
 
@@ -375,6 +384,8 @@ class MyTabView(customtkinter.CTkTabview):
 
 
         note_label3.pack(padx=10, pady=2)
+        min_RPM_label.pack(padx=20, pady=5)
+        self.min_RPM_num.pack(padx=20, pady=10)
         RPM_label.pack(padx=20, pady=5)
         self.RPM_num.pack(padx=20, pady=10)
 
@@ -743,6 +754,7 @@ class MyTabView(customtkinter.CTkTabview):
                             df.to_csv(file_label, index=False)
 
     def point_mic_meas(self):
+        global output_dir
         if self.thrust_num.get() == '':
             CTkMessagebox(title='Error', message='Please enter thrust [lbs]')
         elif self.thrust_num.get().replace('.','',1).isnumeric() == False:
@@ -919,7 +931,6 @@ class MyTabView(customtkinter.CTkTabview):
                         u.close()
 
                         # Define the output directory and file name
-                        output_dir = 'C:\\Users\\mykoh\\OneDrive\\Documents\\BIP\\Results\\FFT'
                         if not os.path.exists(output_dir):
                             os.makedirs(output_dir)  # Ensure the directory exists
                         file_label = os.path.join(output_dir, f'Point Spectrum 6ft-135deg-5lbf {datetime.now().strftime("%Y-%m-%d %H_%M_%S")}.xlsx')
@@ -989,15 +1000,28 @@ class MyTabView(customtkinter.CTkTabview):
 
 
     def auto_rpm_sweep(self):
+        if self.min_RPM_num.get() == '':
+            CTkMessagebox(title='Error', message='Please enter minimum target RPM')
+        elif self.min_RPM_num.get().replace('.','',1).isnumeric() == False:
+            CTkMessagebox(title='Error', message='Please enter a whole numerical RPM value')
         if self.RPM_num.get() == '':
-            CTkMessagebox(title='Error', message='Please enter target RPM')
-        elif self.RPM_num.get().isnumeric() == False:
-            CTkMessagebox(title='Error', message='Please enter a numerical RPM value')
+            CTkMessagebox(title='Error', message='Please enter maximum target RPM')
+        elif self.RPM_num.get().replace('.','',1).isnumeric() == False:
+            CTkMessagebox(title='Error', message='Please enter a whole numerical RPM value')
         else:
             target_RPM = float(self.RPM_num.get())
+            min_target_RPM = float(self.min_RPM_num.get())
+
+            if min_target_RPM <= 0 or min_target_RPM >= 2500:
+                CTkMessagebox(title='Error', message='Please enter a valid minimum RPM between 1 and 2500 RPM.')
+            elif min_target_RPM >= target_RPM:
+                CTkMessagebox(title='Error', message='Minimum target RPM should be lower than the maximum target RPM.')
 
             if target_RPM <= 0 or target_RPM >= 4000:
-                CTkMessagebox(title='Error', message='Thrust value must be between 1 and 4000 lbs')
+                CTkMessagebox(title='Error', message='Thrust value must be between 1 and 4000 RPM')
+            elif target_RPM <= min_target_RPM:
+                CTkMessagebox(title='Error', message='Maximum target RPM should be higher than the minimum target RPM.')
+
             else:
                 # Propeller/Motor Startup
                 throttle_start = 1000
@@ -1011,7 +1035,7 @@ class MyTabView(customtkinter.CTkTabview):
 
                 control2rpm(target_RPM, 20, 200, u, my_IP, recv_port, b)
 
-                SweepRPMs = np.linspace(1500, target_RPM, 25)
+                SweepRPMs = np.linspace(min_target_RPM, target_RPM, 25)
 
 
                 for rpm in SweepRPMs:
