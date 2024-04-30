@@ -10,6 +10,7 @@ import time
 import socket
 import numpy as np
 import pandas as pd
+import nidaqmx
 from nidaqmx.constants import TerminalConfiguration, AcquisitionType
 import waveform_analysis # To install, do: pip install git+https://github.com/endolith/waveform_analysis.git@master
 from scipy.signal import iirfilter, lfilter
@@ -24,7 +25,6 @@ import tkinter as tk
 from tkinter import messagebox, Tk, Button
 import serial
 from serial import Serial
-import nidaqmx
 import openpyxl
 import warnings
 import os
@@ -170,7 +170,7 @@ class Tooltip:
             self.tooltip_window = None
 
 class MyTabView(customtkinter.CTkTabview):
-    def __init__(self, master, **kwargs):
+    def __init__(self, master, initial_values, **kwargs):
         super().__init__(master, **kwargs)
 
         # Create tabs
@@ -216,14 +216,17 @@ class MyTabView(customtkinter.CTkTabview):
         blade_label = customtkinter.CTkLabel(blade_radius, text='Enter Blade Radius [in]: ',
                         font=customtkinter.CTkFont('CustomTkinter', 18, 'bold'))
         self.blade_radius_entry = customtkinter.CTkEntry(blade_radius, placeholder_text='')
+        self.blade_radius_entry.insert(0, initial_values.get('blade_radius_entry', ''))
 
         microphone_label = customtkinter.CTkLabel(microphone_dist, text='Enter Hub to Microphone Dist [in]:',
                         font=customtkinter.CTkFont('CustomTkinter', 15, 'bold'))
         self.microphone_2_hub_entry = customtkinter.CTkEntry(microphone_dist, placeholder_text='')
+        self.microphone_2_hub_entry.insert(0, initial_values.get('microphone_2_hub_entry', ''))
 
         label = customtkinter.CTkLabel(top_frame, text='Enter Target Thrust, [lbf]: ',
                         font=customtkinter.CTkFont('CustomTkinter', 18, 'bold'))
         self.target_thrust = customtkinter.CTkEntry(top_frame, placeholder_text='')
+        self.target_thrust.insert(0, initial_values.get('target_thrust', ''))
 
         move_distance = customtkinter.CTkLabel(middle_frame, text='Move Microphone to a Specified Location?',
                         font=customtkinter.CTkFont('CustomTkinter', 18, 'bold'))
@@ -309,14 +312,17 @@ class MyTabView(customtkinter.CTkTabview):
         thrust_label = customtkinter.CTkLabel(thrust, text='Enter Thrust [lbs]',
                                 font=customtkinter.CTkFont('CustomTkinter', 18, 'bold'))
         self.thrust_num = customtkinter.CTkEntry(thrust, placeholder_text='')
+        self.thrust_num.insert(0, initial_values.get('thrust_num', ''))
 
         radius_label = customtkinter.CTkLabel(radius, text='Enter Blade Radius [in]',
                                 font=customtkinter.CTkFont('CustomTkinter', 18, 'bold'))
         self.radius_num = customtkinter.CTkEntry(radius, placeholder_text='')
+        self.radius_num.insert(0, initial_values.get('radius_num', ''))
 
         mic_label = customtkinter.CTkLabel(mic, text='Move Microphone to Specific r/R:',
                                 font=customtkinter.CTkFont('CustomTkinter', 18, 'bold'))
         self.rOR = customtkinter.CTkEntry(mic, placeholder_text='')
+        self.rOR.insert(0, initial_values.get('rOR', ''))
 
         reset_button_tab2 = customtkinter.CTkButton(tab_2, text='RESET', anchor='center',
                                                     font=customtkinter.CTkFont('CustomTkinter', 14, 'bold'), fg_color='#7EA8B5',
@@ -382,9 +388,12 @@ class MyTabView(customtkinter.CTkTabview):
         min_RPM_label = customtkinter.CTkLabel(m_rpm, text='Enter Minimum Target RPM:',
                                 font=customtkinter.CTkFont('CustomTkinter', 18, 'bold'))
         self.min_RPM_num = customtkinter.CTkEntry(m_rpm, placeholder_text='')
+        self.min_RPM_num.insert(0, initial_values.get('min_RPM_num', ''))
+
         RPM_label = customtkinter.CTkLabel(t_rpm, text='Enter Maximum Target RPM:',
                                 font=customtkinter.CTkFont('CustomTkinter', 18, 'bold'))
         self.RPM_num = customtkinter.CTkEntry(t_rpm, placeholder_text='')
+        self.RPM_num.insert(0, initial_values.get('RPM_num', ''))
 
         button_tab3 = customtkinter.CTkButton(tab_3, text='RUN', anchor='center', 
                                             font=customtkinter.CTkFont('CustomTkinter', 14, 'bold'), fg_color='#7EA8B5',
@@ -1177,7 +1186,18 @@ class MyTabView(customtkinter.CTkTabview):
     def button_reset(self):
         global file_label, app, R, X_pm, X0, L_sample_default, mic_name, DAQ_ID, Channel_ID, f_sample, A
         global hostname, my_IP, tx_port, main_path, kill, results_table, u, vxm, recv_port
-        
+
+        current_values = {
+        'blade_radius_entry': self.blade_radius_entry.get(),
+        'microphone_2_hub_entry': self.microphone_2_hub_entry.get(),
+        'target_thrust': self.target_thrust.get(),
+        'thrust_num': self.thrust_num.get(),
+        'radius_num': self.radius_num.get(),
+        'rOR': self.rOR.get(),
+        'min_RPM_num': self.min_RPM_num.get(),
+        'RPM_num': self.RPM_num.get()
+        }
+
         # Closes the existing socket before destroying the app
         if u:
             u.close()
@@ -1188,24 +1208,26 @@ class MyTabView(customtkinter.CTkTabview):
 
         # Destroys the existing app
         app.destroy()
-        
+
         # Reinitialize the app and other variables
         initialize_app()
-        app = App()
+        app = App(initial_values=current_values)
         app.mainloop()
+
 
         # ----------------------------------------------------------------------------------------------------------
 
 
 class App(customtkinter.CTk):
-    def __init__(self):
+    def __init__(self, initial_values=None):
         super().__init__()
         self.title('Athule Static Test Stand')
-        # self.after(201, lambda :self.iconbitmap(r"C:\Users\mykoh\OneDrive\Documents\BIP\Athule_Logo.jpg"))
         self.geometry('900x780')
 
-        self.tab_view = MyTabView(master=self, width=800, height=650)
-        # self.tab_view = customtkinter.CTkTabview( width=600, height=350)
+        if initial_values is None:
+            initial_values = {}
+
+        self.tab_view = MyTabView(master=self, width=800, height=650, initial_values=initial_values)
         self.tab_view.pack(pady=30)
 
 
